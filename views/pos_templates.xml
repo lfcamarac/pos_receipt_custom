@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!--
+            POS Receipt Compact Fix
+            - Misma info que el template nativo (company, header, lines, taxes, payments)
+            - Formato compacto y neutro: menos padding, font más pequeño, sin colores
+            - Logo del company via image_data_uri() (mismo patron que el nativo)
+            - "powered by tecnosoft" al final (footer del módulo)
+        -->
+        <template id="report_saleorder_inherit" inherit_id="point_of_sale.report_saleorder">
+
+            <!--
+                CSS compacto y neutro:
+                - font-family monospace (idéntico en Windows y Android)
+                - font-size 2.6mm (vs 3mm nativo) → ~13% más compacto
+                - line-height 1.0em (sin espacio extra entre líneas)
+                - sin colores (negro puro, sin grises decorativos)
+                - sin bordes gruesos (solo 1px sólidos para headers/footers)
+                - márgenes mínimos (1mm entre secciones)
+            -->
+            <xpath expr="//div[hasclass('pos-receipt')]" position="attributes">
+                <attribute name="style">
+                    font-family: 'Courier New', monospace !important;
+                    font-size: 2.6mm !important;
+                    line-height: 1.0em !important;
+                    color: #000 !important;
+                    background: transparent !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                </attribute>
+            </xpath>
+
+            <!--
+                Logo al INICIO (mismo patrón que el nativo: image_data_uri del company).
+                Más pequeño (40mm en vez de 80mm nativo).
+            -->
+            <xpath expr="//div[hasclass('pos-receipt')]/t[1]" position="before">
+                <t t-if="company.logo">
+                    <img t-att-src="image_data_uri(company.logo, 'logo_180x120')"
+                         style="margin: 0 auto 0.5mm auto; max-width: 40mm; max-height: 18mm; display: block;"/>
+                </t>
+            </xpath>
+
+            <!--
+                "powered by tecnosoft" al FINAL como footer.
+                Compacto, sin borde decorativo, en un solo renglón.
+            -->
+            <xpath expr="//div[hasclass('pos-receipt')]/*[last()]" position="after">
+                <div class="pos-receipt-footer"
+                     style="text-align: center; margin-top: 1mm; padding-top: 0.5mm; border-top: 1px solid #000; font-size: 2mm; color: #000; font-family: 'Courier New', monospace;">
+                    ─ powered by tecnosoft ─
+                </div>
+            </xpath>
+
+        </template>
+    </data>
+</odoo>
