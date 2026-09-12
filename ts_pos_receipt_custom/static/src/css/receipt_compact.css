@@ -1,61 +1,150 @@
 /*
- * Recibo POS compacto y neutro (Tecnosoft)
+ * ts_pos_receipt_custom — diseño compacto y neutro (Tecnosoft)
+ * Aplica a: recibo del cliente, comanda de cocina (basic_receipt)
+ * y detalle de ventas.
  *
- * Fix: las líneas se solapan al imprimir desde Windows porque el
- * interlineado depende del navegador. Forzamos font monospace y
- * line-height explícito para rendering idéntico en Windows/Android.
- *
- * Compacto: menos aire entre líneas y secciones, más info por ticket.
+ * Fix base: el nativo alinea montos con `float: right` dentro de
+ * contenedores flex → en Windows el texto se monta. Aquí se matan
+ * los floats y se alinea con flexbox.
  */
 
-.pos-receipt {
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 12px !important;
-    line-height: 1.15 !important;
-    color: #000 !important;
-    background-color: transparent !important;
+/* ═══ 1. Anti-solape (fix principal) ══════════════════════════════ */
+
+.pos-receipt .pos-receipt-right-align {
+    float: none !important;
+    display: inline-flex !important;
+    white-space: nowrap;
 }
 
-/* Rendering de impresión (html-to-image usa .render-container) */
-.render-container .pos-receipt {
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 12px !important;
-    line-height: 1.15 !important;
+.responsive-price {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: baseline;
+}
+
+.responsive-price > .pos-receipt-right-align {
+    margin-left: auto !important;
+}
+
+.pos-receipt .orderlines,
+.pos-receipt .orderlines * {
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+/* ═══ 2. Base del recibo: compacto y legible ══════════════════════ */
+
+.pos-receipt {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
     color: #000 !important;
-    border: none !important;
-    margin: 0 !important;
 }
 
 .pos-receipt * {
-    line-height: 1.15 !important;
+    line-height: 1.35 !important;
 }
 
-/* Logo nativo más discreto y centrado */
+/* Logo proporcional, sin distorsión */
 .pos-receipt .pos-receipt-logo {
-    max-width: 150px;
-    max-height: 60px;
-    margin: 0 auto 2px auto;
+    width: auto !important;
+    height: auto !important;
+    max-width: 40%;
+    max-height: 64px;
+    margin: 0 auto 4px;
     display: block;
+    object-fit: contain;
 }
 
-/* Separadores compactos, neutros (negro, sin color) */
-.pos-receipt .text-center {
-    color: #000 !important;
+/* Título / número de comanda: grande pero no gigante */
+.pos-receipt h1.tracking-number {
+    font-size: 40px !important;
+    margin: 2px 0;
+    line-height: 1.1 !important;
 }
 
-/* Total a pagar compacto */
-.pos-receipt .pos-receipt-amount {
+.pos-receipt h1 {
+    font-size: 16px !important;
+    margin: 0 0 4px 0;
+}
+
+/* ═══ 3. Detalle de ventas (ts-sales) ═════════════════════════════ */
+
+.pos-receipt.ts-sales {
+    font-size: 12.5px;
+}
+
+.ts-sales .ts-company {
+    text-align: center;
     font-weight: bold;
+    font-size: 14px;
     margin-top: 2px;
 }
 
-/* Footer powered by tecnosoft discreto */
-.pos-receipt .pos-receipt-order-data:last-child {
-    margin-top: 4px;
+.ts-sales .ts-muted {
+    text-align: center;
+    font-size: 11px;
+    color: #333;
 }
 
+/* Secciones: VENTAS / PAGOS / IMPUESTOS */
+.ts-sales .ts-section {
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin: 4px 0 2px;
+}
+
+/* Filas: nombre a la izquierda, monto a la derecha, sin montarse */
+.ts-sales .ts-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.ts-sales .ts-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ts-sales .ts-amount,
+.ts-sales .ts-qty {
+    margin-left: auto;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* Sub-líneas (descuentos) */
+.ts-sales .ts-subrow .ts-muted {
+    text-align: left;
+    font-size: 10.5px;
+}
+
+/* Divisores */
+.ts-sales .ts-rule {
+    border-top: 1px dashed #888;
+    margin: 5px 0;
+}
+
+.ts-sales .ts-rule-bold {
+    border-top: 2px solid #000;
+}
+
+/* Total */
+.ts-sales .ts-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 15px;
+    margin: 2px 0 4px;
+}
+
+/* Footer */
+.ts-sales .ts-footer,
 .pos-receipt .pos-receipt-order-data p {
     text-align: center;
-    margin: 0;
-    font-size: 10px;
+    font-size: 10.5px;
+    margin: 4px 0 0;
+    color: #333;
 }

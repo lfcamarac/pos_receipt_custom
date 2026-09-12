@@ -1,6 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
+    <!-- ═══════════════════════════════════════════════════════════
+         Detalle de ventas — rediseño compacto Tecnosoft
+         Secciones: Ventas / Devoluciones / Pagos / Impuestos / Total
+         ═══════════════════════════════════════════════════════════ -->
+    <t t-name="ts_pos_receipt_custom.SaleDetailsReport"
+       t-inherit="point_of_sale.SaleDetailsReport"
+       t-inherit-mode="extension">
+
+        <xpath expr="//div[hasclass('pos-receipt')]" position="replace">
+            <div class="pos-receipt ts-sales">
+
+                <!-- Encabezado -->
+                <t t-if="pos.company_logo_base64">
+                    <img class="pos-receipt-logo" t-att-src="pos.company_logo_base64" alt="Logo"/>
+                </t>
+                <div class="ts-company" t-esc="pos.company.name"/>
+                <div class="ts-muted" t-esc="date"/>
+
+                <div class="ts-rule ts-rule-bold"/>
+
+                <!-- Ventas -->
+                <div class="ts-section">Ventas</div>
+                <t t-foreach="products" t-as="category" t-key="category['name']">
+                    <t t-foreach="category['products']" t-as="line" t-key="line_index">
+                        <div class="ts-row">
+                            <span class="ts-name" t-esc="line['product_name']"/>
+                            <span class="ts-amount">
+                                <t t-esc="Math.round(line.quantity * Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)) / Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)"/>
+                                <t t-if="line.uom !== 'Units'"> <t t-esc="line.uom"/></t>
+                            </span>
+                        </div>
+                        <t t-if="line.discount !== 0">
+                            <div class="ts-row ts-subrow">
+                                <span class="ts-muted">Descuento <t t-esc="line.discount"/>%</span>
+                            </div>
+                        </t>
+                    </t>
+                </t>
+
+                <t t-if="refund_products.length">
+                    <div class="ts-rule"/>
+                    <div class="ts-section">Devoluciones</div>
+                    <t t-foreach="refund_products" t-as="category" t-key="category['name']">
+                        <t t-foreach="category['products']" t-as="line" t-key="line_index">
+                            <div class="ts-row">
+                                <span class="ts-name" t-esc="line['product_name']"/>
+                                <span class="ts-amount">
+                                    <t t-esc="Math.round(line.quantity * Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)) / Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)"/>
+                                    <t t-if="line.uom !== 'Units'"> <t t-esc="line.uom"/></t>
+                                </span>
+                            </div>
+                        </t>
+                    </t>
+                </t>
+
+                <div class="ts-rule"/>
+
+                <!-- Pagos -->
+                <div class="ts-section">Pagos</div>
+                <t t-foreach="payments" t-as="payment" t-key="payment_index">
+                    <div class="ts-row">
+                        <span class="ts-name" t-esc="payment['name']"/>
+                        <span class="ts-amount" t-esc="formatCurrency(payment['total'], false)"/>
+                    </div>
+                </t>
+
+                <t t-if="taxes.length">
+                    <div class="ts-rule"/>
+                    <div class="ts-section">Impuestos</div>
+                    <t t-foreach="taxes" t-as="tax" t-key="tax_index">
+                        <div class="ts-row">
+                            <span class="ts-name" t-esc="tax.name"/>
+                            <span class="ts-amount" t-esc="formatCurrency(tax.tax_amount, false)"/>
+                        </div>
+                    </t>
+                </t>
+
+                <!-- Total -->
+                <div class="ts-rule ts-rule-bold"/>
+                <div class="ts-total">
+                    <span>Total</span>
+                    <span t-esc="formatCurrency(currency.total_paid, false)"/>
+                </div>
+
+                <div class="ts-rule"/>
+
+                <div class="ts-footer">powered by tecnosoft</div>
+            </div>
+        </xpath>
+
+    </t>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         Recibo / Comanda — footer tecnosoft
+         (la comanda es este mismo template en modo basic_receipt)
+         ═══════════════════════════════════════════════════════════ -->
     <t t-name="ts_pos_receipt_custom.OrderReceipt"
        t-inherit="point_of_sale.OrderReceipt"
        t-inherit-mode="extension">
