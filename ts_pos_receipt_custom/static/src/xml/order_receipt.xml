@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="ts_pos_receipt_custom.OrderReceipt"
+       t-inherit="point_of_sale.OrderReceipt"
+       t-inherit-mode="extension">
+
+        <!-- Footer: "powered by tecnosoft" en lugar de "Powered by Odoo" -->
+        <xpath expr="//div[hasclass('pos-receipt-order-data')]/p" position="replace">
+            <p>powered by tecnosoft</p>
+        </xpath>
+
+    </t>
+
+</templates>

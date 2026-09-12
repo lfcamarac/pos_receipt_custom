@@ -1,0 +1,61 @@
+/*
+ * Recibo POS compacto y neutro (Tecnosoft)
+ *
+ * Fix: las líneas se solapan al imprimir desde Windows porque el
+ * interlineado depende del navegador. Forzamos font monospace y
+ * line-height explícito para rendering idéntico en Windows/Android.
+ *
+ * Compacto: menos aire entre líneas y secciones, más info por ticket.
+ */
+
+.pos-receipt {
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    color: #000 !important;
+    background-color: transparent !important;
+}
+
+/* Rendering de impresión (html-to-image usa .render-container) */
+.render-container .pos-receipt {
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    color: #000 !important;
+    border: none !important;
+    margin: 0 !important;
+}
+
+.pos-receipt * {
+    line-height: 1.15 !important;
+}
+
+/* Logo nativo más discreto y centrado */
+.pos-receipt .pos-receipt-logo {
+    max-width: 150px;
+    max-height: 60px;
+    margin: 0 auto 2px auto;
+    display: block;
+}
+
+/* Separadores compactos, neutros (negro, sin color) */
+.pos-receipt .text-center {
+    color: #000 !important;
+}
+
+/* Total a pagar compacto */
+.pos-receipt .pos-receipt-amount {
+    font-weight: bold;
+    margin-top: 2px;
+}
+
+/* Footer powered by tecnosoft discreto */
+.pos-receipt .pos-receipt-order-data:last-child {
+    margin-top: 4px;
+}
+
+.pos-receipt .pos-receipt-order-data p {
+    text-align: center;
+    margin: 0;
+    font-size: 10px;
+}
