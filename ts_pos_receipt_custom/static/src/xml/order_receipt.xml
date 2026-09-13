@@ -13,9 +13,9 @@
             <div class="pos-receipt ts-sales">
 
                 <!-- Encabezado -->
-                <t t-if="pos.company_logo_base64">
-                    <img class="pos-receipt-logo" t-att-src="pos.company_logo_base64" alt="Logo"/>
-                </t>
+                <img class="pos-receipt-logo"
+                     t-attf-src="/web/image?model=res.company&amp;id={{pos.company.id}}&amp;field=logo"
+                     alt="Logo"/>
                 <div class="ts-company" t-esc="pos.company.name"/>
                 <div class="ts-muted" t-esc="date"/>
 
@@ -28,7 +28,7 @@
                         <div class="ts-row">
                             <span class="ts-name" t-esc="line['product_name']"/>
                             <span class="ts-amount">
-                                <t t-esc="Math.round(line.quantity * Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)) / Math.pow(10, pos.models['decimal.precision'].find((dp) => dp.name === 'Product Unit of Measure')?.digits ?? 0)"/>
+                                <t t-esc="ProductUnit.round(line.quantity)"/>
                                 <t t-if="line.uom !== 'Units'"> <t t-esc="line.uom"/></t>
                             </span>
                         </div>
@@ -101,9 +101,11 @@
        t-inherit="point_of_sale.OrderReceipt"
        t-inherit-mode="extension">
 
-        <!-- Footer: "powered by tecnosoft" en lugar de "Powered by Odoo" -->
-        <xpath expr="//div[hasclass('pos-receipt-order-data')]/p" position="replace">
-            <p>powered by tecnosoft</p>
+        <!-- v19: "Powered by Odoo" vive en div.footer-powered-by -->
+        <xpath expr="//div[hasclass('footer-powered-by')]" position="replace">
+            <div class="pos-receipt-order-data footer-powered-by">
+                <p>powered by tecnosoft</p>
+            </div>
         </xpath>
 
     </t>

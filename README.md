@@ -66,7 +66,7 @@ pos_receipt_custom/            ← repo
 
 ## Versión
 
-- 18.0.1.1.0
+- 19.0.1.2.0 (rama v19/main)
 
 ## Autor
 
