@@ -1,55 +1,72 @@
 # ts_pos_receipt_custom
 
-Recibo personalizado para el Punto de Venta (POS) de Odoo 18 — estilo Tecnosoft.
+Recibo personalizado para el Punto de Venta (POS) — estilo Tecnosoft.
 
 Misma información que el recibo nativo, pero en un **formato compacto y neutro**
-que aprovecha mejor el espacio de impresión.
+que aprovecha mejor el espacio de impresión, con footer
+"powered by tecnosoft" y detalle de ventas (X/Z) rediseñado.
 
-## El problema
+## Qué hace
 
-Al imprimir el recibo desde Windows, las líneas se solapan. Desde Android se ve bien.
+1. **Interlineado uniforme + anti-solape**: hereda el estilo nativo del recibo
+   (`pos_order_receipt_style`) con `line-height` fijo, montos sin envolver y
+   nombres con wrap seguro. Es el mismo fix que en 18/19 contra el montado de
+   líneas al imprimir desde Windows.
+2. **Logo proporcional**, sin distorsión.
+3. **Footer** "powered by tecnosoft" en lugar de "Powered by Odoo".
+4. **Detalle de ventas (X/Z)** rediseñado: Ventas / Devoluciones / Pagos /
+   Impuestos / Total, con cantidad + UdM y sub-línea de descuento por producto.
 
-**Causa:** el interlineado del recibo depende del navegador. En Windows colapsa
-y las líneas se pisan.
+## Cómo funciona en Odoo 20
 
-## Cómo funciona
+En Odoo 20 el recibo del POS **ya no es un componente OWL**: el pipeline es
 
-En Odoo 18 el recibo del POS **no es un report de servidor**: es un componente
-OWL (`point_of_sale.OrderReceipt`) que se renderiza en el navegador. Este módulo
-por tanto es 100% client-side:
+```
+GeneratePrinterData.generateReceiptData() / generateSaleDetailsData()
+        → iframe renderiza el QWeb servidor point_of_sale.pos_order_receipt
+          (o pos_sale_details_receipt para el X/Z)
+        → ticketPrinter.printOrderReceipt()
+```
 
-1. **CSS** (`static/src/css/receipt_compact.css`) en el bundle `point_of_sale._assets_pos`:
-   - `font-family: 'Courier New', monospace` → rendering uniforme en todos los navegadores
-   - `font-size: 12px`, `line-height: 1.15` → compacto, sin overlap
-   - Negro puro, sin colores decorativos
+El componente OWL `OrderReceipt` y el `ReceiptScreen` fueron eliminados. Este
+módulo por tanto es:
 
-2. **Herencia OWL** (`static/src/xml/order_receipt.xml`) con `t-inherit="point_of_sale.OrderReceipt"`:
-   - Cambia "Powered by Odoo" por **"powered by tecnosoft"**
+1. **QWeb servidor** (`views/pos_order_receipt_custom.xml`), heredando los
+   templates nativos `receipt/*.xml` por xpath (mismo patrón que
+   `pos_dual_currency.pos_order_receipt_igtf`):
+   - `pos_order_receipt_footer` → footer tecnosoft.
+   - `pos_sale_details_receipt` → layout ts-sales del X/Z.
+   - `pos_order_receipt_style` → CSS del recibo. En 20 el recibo se renderiza
+     en un iframe (srcdoc): el CSS del bundle `_assets_pos` (enfoque v19) no
+     llega al iframe; el estilo vive en este template.
+2. **Un patch JS** (`static/src/app/receipt_data_custom.js`) sobre
+   `GeneratePrinterData.generateSaleDetailsData()`: re-adjunta `uom` y
+   `discount` a las líneas agrupadas del X/Z para mantener el output v19.
 
-3. **Logo**: ya es nativo (`ReceiptHeader` usa `res.company.logo`) — no se toca.
+**Sizing**: en v19 la referencia era 14.5px sobre un recibo DOM de 266px
+(ratio ~0.055). En 20 el tamaño lo fija el perfil de impresora (22px sobre
+380/512px, ratio ~0.055), así que la densidad v19 se conserva sin pisar el
+sizing nativo.
 
-**No toca** impuestos, pagos ni lógica de servidor.
+No toca impuestos, pagos ni lógica de servidor.
 
 ## Compatibilidad
 
-- Odoo 18.0 (community y enterprise)
-- Odoo 17/19: pendiente de validar (el xpath del footer difiere en 19)
+- Odoo 20.0 (community y enterprise)
 
 ## Instalación
 
 ```bash
-# Opción A: clonar el repo y apuntar el addons_path al módulo
 cd /opt/odoo/addons
 git clone git@github.com:lfcamarac/pos_receipt_custom.git
 
-# Opción B: copiar solo el módulo
+# o copiar solo el módulo
 git clone git@github.com:lfcamarac/pos_receipt_custom.git /tmp/prc
 cp -r /tmp/prc/ts_pos_receipt_custom /opt/odoo/addons/
 ```
 
-En **CloudPepper**: Add GitHub repository → `lfcamarac/pos_receipt_custom` → rama `v18/main`.
-
-Luego: Apps → **POS Receipt Custom (Tecnosoft)** → Instalar.
+Luego: Apps → **POS Receipt Custom (Tecnosoft)** → Instalar, y verificar
+visualmente el recibo (vista web y impresora térmica).
 
 ## Estructura
 
@@ -58,15 +75,14 @@ pos_receipt_custom/            ← repo
 ├── README.md
 └── ts_pos_receipt_custom/     ← módulo Odoo
     ├── __init__.py
-    ├── __manifest__.py        ← assets en point_of_sale._assets_pos
-    └── static/src/
-        ├── css/receipt_compact.css
-        └── xml/order_receipt.xml
+    ├── __manifest__.py
+    ├── static/src/app/receipt_data_custom.js   ← patch GeneratePrinterData
+    └── views/pos_order_receipt_custom.xml      ← herencias QWeb receipt/*
 ```
 
 ## Versión
 
-- 19.0.1.2.0 (rama v19/main)
+- 20.0.1.2.0 (rama `v20/main`)
 
 ## Autor
 

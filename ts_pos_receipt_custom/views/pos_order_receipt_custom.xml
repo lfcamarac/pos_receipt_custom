@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ═══════════════════════════════════════════════════════════════
+             Puerto v19 → v20 de ts_pos_receipt_custom.
+
+             En Odoo 20 el recibo/comanda y el detalle de ventas NO son
+             componentes OWL: generateReceiptData()/generateSaleDetailsData()
+             arman los datos y un iframe renderiza los QWeb servidor
+             receipt/*.xml. El cliente registra esos templates via
+             registerPythonTemplate (convert_python_template.js), que traduce
+             la sintaxis python (.get, len, not/and/or) a JS — solo los
+             templates whitelisteado en ir.ui.view._get_xml_ids_to_load del
+             núcleo llegan al cliente, así que aquí NO se usan templates
+             nuevos con t-call: todo va inline por xpath, igual que
+             pos_dual_currency.pos_order_receipt_igtf.
+
+             El CSS del bundle point_of_sale._assets_pos (enfoque v19) no
+             entra al iframe: todo estilo del recibo vive en el template
+             point_of_sale.pos_order_receipt_style, que se hereda abajo.
+
+             Sizing: en v19 la referencia era 14.5px sobre un recibo DOM de
+             266px (ratio ~0.055). En 20 el tamaño lo fija el perfil de
+             impresora (22px sobre 380/512px, ratio ~0.055) y se inyecta
+             DESPUÉS de este estilo con !important, así que la densidad v19
+             se conserva sin pisar el sizing nativo; aquí se portan las
+             partes que aún aplican: interlineado uniforme (1.35), guards
+             anti-solape (nowrap a montos / wrap a nombres), logo
+             proporcional y el layout ts-sales.
+             ═══════════════════════════════════════════════════════════════ -->
+
+        <!-- 1. Estilo del recibo: fix anti-solape + compacto (port del CSS
+                receipt_compact.css de v19; aplica a recibo, comanda básica,
+                propina, caja y detalle de ventas, que comparten este estilo) -->
+        <template id="ts_pos_receipt_custom.pos_order_receipt_style_custom"
+                  inherit_id="point_of_sale.pos_order_receipt_style">
+            <!-- Un &lt;style&gt; HERMANO despues del &lt;style&gt; nativo (no
+                anidado dentro: el iframe parsea HTML y un style anidado
+                corromperia el CSS). Al ir despues, la cascada favorece este
+                bloque en conflictos de igual especificidad (line-height). -->
+            <xpath expr="//style" position="after">
+                <style>
+                /* Interlineado uniforme: causa raiz del solape en Windows en
+                   18/19. En 20 las clases text-* traen line-height fijo en px;
+                   el perfil de impresora las re-fija despues con !important. */
+                #pos-receipt { line-height: 1.35 !important; }
+
+                /* Anti-solape: montos sin envolver, nombres con wrap seguro
+                   (port de los guards flexbox de v19; en 20 no hay floats). */
+                #pos-receipt .text-end { white-space: nowrap; }
+                #pos-receipt .text-start, #pos-receipt .name { overflow-wrap: anywhere; min-width: 0; }
+
+                /* Logo proporcional, sin distorsion (v19: pos-receipt-logo). */
+                #pos-receipt [name="logo"] img {
+                    width: auto !important;
+                    max-width: 40% !important;
+                    max-height: 128px;
+                    margin: 0 auto 4px;
+                    display: block;
+                    object-fit: contain;
+                }
+
+                /* Detalle de ventas (ts-sales): port de la seccion 3 del CSS
+                   v19, escalado al lienzo de 512px de v20. */
+                #pos-receipt .ts-company {
+                    text-align: center;
+                    font-weight: bold;
+                    font-size: 23px !important;
+                    margin-top: 2px;
+                }
+                #pos-receipt .ts-muted {
+                    text-align: center;
+                    font-size: 19px !important;
+                    color: #333;
+                }
+                #pos-receipt .ts-section {
+                    font-weight: bold;
+                    font-size: 19px !important;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    text-align: center;
+                    margin: 8px 0 4px;
+                }
+                #pos-receipt .ts-row {
+                    display: flex;
+                    align-items: baseline;
+                    gap: 10px;
+                }
+                #pos-receipt .ts-name {
+                    min-width: 0;
+                    overflow-wrap: anywhere;
+                    text-align: left;
+                }
+                #pos-receipt .ts-amount {
+                    margin-left: auto;
+                    white-space: nowrap;
+                    text-align: right;
+                    font-variant-numeric: tabular-nums;
+                }
+                #pos-receipt .ts-subrow {
+                    text-align: left;
+                    font-size: 18px !important;
+                    color: #333;
+                }
+                #pos-receipt .ts-rule {
+                    border-top: 1px dashed #888;
+                    margin: 10px 0;
+                }
+                #pos-receipt .ts-rule-bold {
+                    border-top: 2px solid #000;
+                }
+                #pos-receipt .ts-total {
+                    display: flex;
+                    justify-content: space-between;
+                    font-weight: bold;
+                    font-size: 24px !important;
+                    margin: 4px 0 8px;
+                }
+                #pos-receipt .ts-footer,
+                #pos-receipt .ts-powered-by {
+                    text-align: center;
+                    font-size: 18px !important;
+                    color: #333;
+                    margin-top: 8px;
+                }
+                </style>
+            </xpath>
+        </template>
+
+        <!-- 2. Detalle de ventas (X/Z) rediseñado Tecnosoft — port del
+                template OWL ts_pos_receipt_custom.SaleDetailsReport de v19.
+                Secciones: Ventas / Devoluciones / Pagos / Impuestos / Total.
+                (El bloque CANCELLED que estrena el núcleo en 20 no formaba
+                parte del output v19; no se renderiza para conservarlo.)
+                Datos: los rows de sold/refund llevan uom y discount gracias
+                al patch de static/src/app/receipt_data_custom.js. -->
+        <template id="ts_pos_receipt_custom.pos_sale_details_receipt_custom"
+                  inherit_id="point_of_sale.pos_sale_details_receipt">
+            <xpath expr="//div[hasclass('pos-receipt')]" position="replace">
+                <div class="pos-receipt ts-sales">
+                    <!-- Encabezado -->
+                    <div class="w-100 text-center" name="logo">
+                        <img t-if="image.get('logo')" t-att-src="image['logo']" alt="Logo"/>
+                    </div>
+                    <div class="ts-company" t-out="company.get('name')"/>
+                    <div class="ts-muted" t-out="extra_data.get('date')"/>
+
+                    <div class="ts-rule ts-rule-bold"/>
+
+                    <!-- Ventas -->
+                    <div class="ts-section">Ventas</div>
+                    <t t-foreach="extra_data['sold']" t-as="category">
+                        <t t-foreach="category['products']" t-as="line">
+                            <div class="ts-row">
+                                <span class="ts-name" t-out="line['name']"/>
+                                <span class="ts-amount">
+                                    <t t-out="line['quantity']"/>
+                                    <t t-if="line.get('uom') and line['uom'] != 'Units'"> <t t-out="line['uom']"/></t>
+                                </span>
+                            </div>
+                            <t t-if="line.get('discount')">
+                                <div class="ts-subrow">Descuento <t t-out="line['discount']"/>%</div>
+                            </t>
+                        </t>
+                    </t>
+
+                    <t t-if="len(extra_data['refund'])">
+                        <div class="ts-rule"/>
+                        <div class="ts-section">Devoluciones</div>
+                        <t t-foreach="extra_data['refund']" t-as="category">
+                            <t t-foreach="category['products']" t-as="line">
+                                <div class="ts-row">
+                                    <span class="ts-name" t-out="line['name']"/>
+                                    <span class="ts-amount">
+                                        <t t-out="line['quantity']"/>
+                                        <t t-if="line.get('uom') and line['uom'] != 'Units'"> <t t-out="line['uom']"/></t>
+                                    </span>
+                                </div>
+                                <t t-if="line.get('discount')">
+                                    <div class="ts-subrow">Descuento <t t-out="line['discount']"/>%</div>
+                                </t>
+                            </t>
+                        </t>
+                    </t>
+
+                    <div class="ts-rule"/>
+
+                    <!-- Pagos -->
+                    <div class="ts-section">Pagos</div>
+                    <t t-foreach="extra_data['payments']" t-as="payment">
+                        <div class="ts-row">
+                            <span class="ts-name" t-out="payment['name']"/>
+                            <span class="ts-amount" t-out="payment['total']"/>
+                        </div>
+                    </t>
+
+                    <t t-if="len(extra_data['taxes'])">
+                        <div class="ts-rule"/>
+                        <div class="ts-section">Impuestos</div>
+                        <t t-foreach="extra_data['taxes']" t-as="tax">
+                            <div class="ts-row">
+                                <span class="ts-name" t-out="tax['name']"/>
+                                <span class="ts-amount" t-out="tax['tax_amount']"/>
+                            </div>
+                        </t>
+                    </t>
+
+                    <!-- Total -->
+                    <div class="ts-rule ts-rule-bold"/>
+                    <div class="ts-total">
+                        <span>Total</span>
+                        <span t-out="extra_data['total_paid']"/>
+                    </div>
+
+                    <div class="ts-rule"/>
+
+                    <div class="ts-footer">powered by tecnosoft</div>
+                </div>
+            </xpath>
+        </template>
+
+        <!-- 3. Recibo del cliente / comanda: footer "powered by tecnosoft"
+                (port de ts_pos_receipt_custom.OrderReceipt de v19; en 20 el
+                footer vive en el QWeb point_of_sale.pos_order_receipt_footer) -->
+        <template id="ts_pos_receipt_custom.pos_order_receipt_footer_custom"
+                  inherit_id="point_of_sale.pos_order_receipt_footer">
+            <xpath expr="//div[strong='Odoo']" position="replace">
+                <div class="ts-powered-by">powered by tecnosoft</div>
+            </xpath>
+        </template>
+    </data>
+</odoo>
